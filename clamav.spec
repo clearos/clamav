@@ -19,16 +19,16 @@
 %global have_ocaml	0
 %endif
 
-%global username	clamupdate
+%global username	clam
 %global homedir		%_var/lib/clamav
-%global freshclamlog	%_var/log/freshclam.log
+%global freshclamlog	%_var/log/clamav/freshclam.log
 %global milteruser	clamilt
 %global milterlog	%_var/log/clamav-milter.log
 %global milterstatedir	%_var/run/clamav-milter
 %global pkgdatadir	%_datadir/%name
 
 %global scanuser	clamscan
-%global scanstatedir	%_var/run/clamd.scan
+%global scanstatedir	%_var/run/clamav
 
 %{?with_noarch:%global noarch	BuildArch:	noarch}
 %{!?_unitdir:%global _unitdir /lib/systemd/system}
@@ -401,9 +401,9 @@ mkdir -p libclamunrar{,_iface}
 %{!?with_unrar:touch libclamunrar/{Makefile.in,all,install}}
 
 sed -ri \
-    -e 's!^#?(LogFile ).*!#\1/var/log/clamd.<SERVICE>!g' \
-    -e 's!^#?(LocalSocket ).*!#\1/var/run/clamd.<SERVICE>/clamd.sock!g' \
-    -e 's!^(#?PidFile ).*!\1/var/run/clamd.<SERVICE>/clamd.pid!g' \
+    -e 's!^#?(LogFile ).*!#\1/var/log/clamav!g' \
+    -e 's!^#?(LocalSocket ).*!#\1/var/run/clamav/clamd.sock!g' \
+    -e 's!^(#?PidFile ).*!\1/var/run/clamav/clamd.pid!g' \
     -e 's!^#?(User ).*!\1<USER>!g' \
     -e 's!^#?(AllowSupplementaryGroups|LogSyslog).*!\1 yes!g' \
     -e 's! /usr/local/share/clamav,! %homedir,!g' \
