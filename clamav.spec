@@ -58,7 +58,7 @@ Requires(postun):	 /bin/systemctl\
 Summary:	End-user tools for the Clam Antivirus scanner
 Name:		clamav
 Version:	0.98.7
-Release:	2%{?dist}
+Release:	3%{?dist}
 License:	%{?with_unrar:proprietary}%{!?with_unrar:GPLv2}
 Group:		Applications/File
 URL:		http://www.clamav.net
@@ -528,27 +528,25 @@ install -D -p -m 0644 %SOURCE530        $RPM_BUILD_ROOT%_unitdir/clamd@.service
 
 
 ## prepare the update-files
-install -D -m 0644 -p %SOURCE203	$RPM_BUILD_ROOT%_sysconfdir/logrotate.d/clamav-update
+install -D -m 0644 -p %SOURCE203	$RPM_BUILD_ROOT%_sysconfdir/logrotate.d/freshclam
 install -D -m 0755 -p %SOURCE8		$RPM_BUILD_ROOT%_sbindir/clamav-notify-servers
 mkdir -p $RPM_BUILD_ROOT%_var/log/clamav
 touch $RPM_BUILD_ROOT%freshclamlog
 
 install -D -p -m 0755 %SOURCE200	$RPM_BUILD_ROOT%pkgdatadir/freshclam-sleep
 install -D -p -m 0644 %SOURCE201	$RPM_BUILD_ROOT%_sysconfdir/sysconfig/freshclam
-install -D -p -m 0600 %SOURCE202	$RPM_BUILD_ROOT%_sysconfdir/cron.d/clamav-update
 mv -f $RPM_BUILD_ROOT%_sysconfdir/freshclam.conf{.sample,}
 
 smartsubst 's!webmaster,clamav!webmaster,%username!g;
 	    s!/usr/share/clamav!%pkgdatadir!g;
 	    s!/usr/bin!%_bindir!g;
             s!/usr/sbin!%_sbindir!g;' \
-   $RPM_BUILD_ROOT%_sysconfdir/cron.d/clamav-update \
    $RPM_BUILD_ROOT%pkgdatadir/freshclam-sleep
 
 
 ### The scanner stuff
 sed -e 's!<SERVICE>!scan!g;s!<USER>!%scanuser!g' \
-    etc/clamd.conf.sample > $RPM_BUILD_ROOT%_sysconfdir/clamd.d/scan.conf
+    etc/clamd.conf.sample > $RPM_BUILD_ROOT%_sysconfdir/clamd.conf
 
 %if 0%{?with_sysv:1}
 sed -e 's!<SERVICE>!scan!g;' $RPM_BUILD_ROOT%pkgdatadir/template/clamd.init \
@@ -558,8 +556,8 @@ sed -e 's!<SERVICE>!scan!g;' $RPM_BUILD_ROOT%pkgdatadir/template/clamd.init \
 install -D -p -m 0644 %SOURCE410 $RPM_BUILD_ROOT%_sysconfdir/init/clamd.scan.conf
 install -D -p -m 0644 %SOURCE430 $RPM_BUILD_ROOT%_unitdir/clamd@scan.service
 
-cat << EOF > $RPM_BUILD_ROOT%_sysconfdir/tmpfiles.d/clamd.scan.conf
-d %scanstatedir 0710 %scanuser %scanuser
+cat << EOF > $RPM_BUILD_ROOT%_sysconfdir/tmpfiles.d/clamd.conf
+d %scanstatedir 0775 %scanuser %scanuser
 EOF
 
 touch $RPM_BUILD_ROOT%scanstatedir/clamd.{sock,pid}
@@ -787,7 +785,6 @@ test "$1" != "0" || /sbin/initctl -q stop clamav-milter || :
 %pkgdatadir/freshclam-sleep
 %config(noreplace) %verify(not mtime)    %_sysconfdir/freshclam.conf
 %config(noreplace) %verify(not mtime)    %_sysconfdir/logrotate.d/*
-%config(noreplace) %_sysconfdir/cron.d/clamav-update
 %config(noreplace) %_sysconfdir/sysconfig/freshclam
 
 %ghost %attr(0664,root,%username) %verify(not size md5 mtime) %freshclamlog
