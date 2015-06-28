@@ -530,6 +530,7 @@ install -D -p -m 0644 %SOURCE530        $RPM_BUILD_ROOT%_unitdir/clamd@.service
 ## prepare the update-files
 install -D -m 0644 -p %SOURCE203	$RPM_BUILD_ROOT%_sysconfdir/logrotate.d/clamav-update
 install -D -m 0755 -p %SOURCE8		$RPM_BUILD_ROOT%_sbindir/clamav-notify-servers
+mkdir -p $RPM_BUILD_ROOT%_var/log/clamav
 touch $RPM_BUILD_ROOT%freshclamlog
 
 install -D -p -m 0755 %SOURCE200	$RPM_BUILD_ROOT%pkgdatadir/freshclam-sleep
