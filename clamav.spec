@@ -627,7 +627,7 @@ exit 0
 
 %{?with_tmpfiles:
 %post scanner
-%{?with_systemd:/bin/systemd-tmpfiles --create %_sysconfdir/tmpfiles.d/clamd.scan.conf || :}}
+%{?with_systemd:/bin/systemd-tmpfiles --create %_sysconfdir/tmpfiles.d/clamd.conf || :}}
 
 
 %post server-systemd
@@ -821,11 +821,11 @@ test "$1" != "0" || /sbin/initctl -q stop clamav-milter || :
 
 %files scanner
 %defattr(-,root,root,-)
-%config(noreplace) %_sysconfdir/clamd.d/scan.conf
+%config(noreplace) %_sysconfdir/clamd.conf
 %ghost %scanstatedir/clamd.sock
 
 %if 0%{?with_tmpfiles:1}
-  %_sysconfdir/tmpfiles.d/clamd.scan.conf
+  %_sysconfdir/tmpfiles.d/clamd.conf
   %ghost %dir %attr(0710,%scanuser,%scanuser) %scanstatedir
 %else
   %dir %attr(0710,%scanuser,%scanuser) %scanstatedir
