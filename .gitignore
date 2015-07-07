@@ -1,3 +1,5 @@
 /clamav-*-norar.tar.xz
 /main*.cvd
 /daily*.cvd
+/Makefile
+*.src.rpm
