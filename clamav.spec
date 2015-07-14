@@ -26,17 +26,14 @@
 %global username	clam
 %global homedir		%_var/lib/clamav
 %global freshclamlog	%_var/log/clamav/freshclam.log
-%global milteruser	clamilt
-%global milterlog	%_var/log/clamav-milter.log
-%global milterstatedir	%_var/run/clamav-milter
 %global pkgdatadir	%_datadir/%name
 
 %global scanuser	clamscan
+
 %global scanstatedir	%_var/run/clamav
 
 %{?with_noarch:%global noarch	BuildArch:	noarch}
 %{!?_unitdir:%global _unitdir /lib/systemd/system}
-%{!?_initrddir:%global _initrddir /etc/rc.d/init.d}
 %{!?release_func:%global release_func() %%{?prerelease:0.}%1%%{?prerelease:.%%prerelease}%%{?dist}}
 %{!?apply:%global  apply(p:n:b:) %patch%%{-n:%%{-n*}} %%{-p:-p %%{-p*}} %%{-b:-b %%{-b*}} \
 %nil}
@@ -54,11 +51,10 @@ Requires(postun):	 /bin/systemctl\
 %systemd_postun_with_restart %2 \
 %nil}
 
-
 Summary:	End-user tools for the Clam Antivirus scanner
 Name:		clamav
 Version:	0.98.7
-Release:	3%{?dist}
+Release:	3%{?dist}.1
 License:	%{?with_unrar:proprietary}%{!?with_unrar:GPLv2}
 Group:		Applications/File
 URL:		http://www.clamav.net
@@ -95,17 +91,6 @@ BuildRequires:	%_includedir/tcpd.h
 %{?with_bytecode:BuildRequires:	ocaml}
 %endif
 
-%package filesystem
-Summary:	Filesystem structure for clamav
-Group:		Applications/File
-Provides:	user(%username)  = 4
-Provides:	group(%username) = 4
-# Prevent version mix
-Conflicts:	%name < %version-%release
-Conflicts:	%name > %version-%release
-Requires(pre):  shadow-utils
-%{?noarch}
-
 %package lib
 Summary:	Dynamic libraries for the Clam Antivirus scanner
 Group:		System Environment/Libraries
@@ -114,184 +99,31 @@ Requires:	data(clamav)
 %package devel
 Summary:	Header files and libraries for the Clam Antivirus scanner
 Group:		Development/Libraries
-Source100:	clamd-gen
 Requires:	clamav-lib        = %version-%release
-Requires:	clamav-filesystem = %version-%release
 
 %package data
 Summary:	Virus signature data for the Clam Antivirus scanner
 Group:		Applications/File
-Requires(pre):		clamav-filesystem = %version-%release
-Requires(postun):	clamav-filesystem = %version-%release
 Provides:		data(clamav) = full
 Conflicts:		data(clamav) < full
 Conflicts:		data(clamav) > full
 %{?noarch}
 
-%package data-empty
-Summary:	Empty data package for the Clam Antivirus scanner
-Group:		Applications/File
-Provides:	data(clamav) = empty
-Conflicts:	data(clamav) < empty
-Conflicts:	data(clamav) > empty
-%{?noarch}
-
-%package update
-Summary:	Auto-updater for the Clam Antivirus scanner data-files
-Group:		Applications/File
-Source200:	freshclam-sleep
-Source201:	freshclam.sysconfig
-Source202:	clamav-update.crond
+%package server
+Summary:	Clam Antivirus scanner server
+Group:		System Environment/Daemons
+Source3:	clamd.logrotate
 Source203:	clamav-update.logrotate
-Requires:	clamav-filesystem = %version-%release
+Source1000: clamd.service
 Requires:	crontabs
+Requires:	data(clamav)
+Requires:	clamav        = %version-%release
+Requires:	clamav-lib        = %version-%release
+Requires:	nc coreutils
 Requires(pre):		/etc/cron.d
 Requires(postun):	/etc/cron.d
 Requires(post):		%__chown %__chmod
 Requires(post):		group(%username)
-
-%package server
-Summary:	Clam Antivirus scanner server
-Group:		System Environment/Daemons
-Source2:	clamd.sysconfig
-Source3:	clamd.logrotate
-Source5:	clamd-README
-Source7:	clamd.SERVICE.init
-Source8:	clamav-notify-servers
-Requires:	data(clamav)
-Requires:	clamav-filesystem = %version-%release
-Requires:	clamav-lib        = %version-%release
-Requires:	nc coreutils
-
-%if 0%{?with_sysv:1}
-%package server-sysvinit
-Summary:	SysV initscripts for clamav server
-Group:		System Environment/Daemons
-Provides:	init(clamav-server) = sysv
-Requires:	clamav-server = %version-%release
-Requires(pre):		%_initrddir
-Requires(postun):	%_initrddir
-Provides:	clamav-server-sysv = %version-%release
-Obsoletes:	clamav-server-sysv < %version-%release
-Source520:	clamd-wrapper
-%{?noarch}
-%endif
-
-%package server-systemd
-Summary:	Systemd initscripts for clamav server
-Group:		System Environment/Daemons
-Provides:	init(clamav-server) = systemd
-Requires:	clamav-server = %version-%release
-Source530:	clamd@.service
-%{?systemd_reqs}
-%{?noarch}
-
-
-%package scanner
-Summary:	Clamav scanner daemon
-Group:		System Environment/Daemons
-Requires:	init(clamav-scanner)
-Provides:	user(%scanuser)  = 49
-Provides:	group(%scanuser) = 49
-Requires:	clamav-server = %version-%release
-%{?noarch}
-
-# Remove me after EOL of RHEL5
-%if 0%{?with_sysv:1}
-%package scanner-sysvinit
-Summary:	SysV initscripts for clamav scanner daemon
-Group:		System Environment/Daemons
-Provides:	init(clamav-scanner) = sysv
-Requires:	clamav-server-sysvinit = %version-%release
-Requires:	clamav-scanner = %version-%release
-Requires(pre):		%_initrddir
-Requires(postun):	%_initrddir initscripts
-Requires(post):		chkconfig
-Requires(preun):	chkconfig initscripts
-%{?noarch}
-%endif
-
-# Remove me after EOL of RHEL6
-%package scanner-upstart
-Summary:	Upstart initscripts for clamav scanner daemon
-Group:		System Environment/Daemons
-Source410:	clamd.scan.upstart
-Provides:	init(clamav-scanner) = upstart
-Requires:	clamav-scanner = %version-%release
-Requires(pre):		/etc/init
-Requires(post):		/usr/bin/killall
-Requires(preun):	/sbin/initctl
-%{?noarch}
-
-%package scanner-systemd
-Summary:	Systemd initscripts for clamav scanner daemon
-Group:		System Environment/Daemons
-Source430:	clamd@scan.service
-Provides:	init(clamav-scanner) = systemd
-Requires:	clamav-scanner = %version-%release
-Requires:	clamav-server-systemd = %version-%release
-%{?systemd_reqs}
-%{?noarch}
-
-%package milter
-Summary:	Milter module for the Clam Antivirus scanner
-Group:		System Environment/Daemons
-Source300:	README.fedora
-Requires:	init(clamav-milter)
-BuildRequires:	sendmail-devel
-Provides:	user(%milteruser)  = 5
-Provides:	group(%milteruser) = 5
-Requires(post):	coreutils
-Requires(pre):  shadow-utils
-
-Provides:	milter(clamav) = sendmail
-Provides:	milter(clamav) = postfix
-
-Provides:	clamav-milter-core = %version-%release
-Obsoletes:	clamav-milter-core < %version-%release
-Provides:	clamav-milter-sendmail = %version-%release
-Obsoletes:	clamav-milter-sendmail < %version-%release
-
-# Remove me after EOL of RHEL5
-%if 0%{?with_sysv:1}
-%package milter-sysvinit
-Summary:	SysV initscripts for the clamav sendmail-milter
-Group:		System Environment/Daemons
-Source320:	clamav-milter.sysv
-Provides:	init(clamav-milter) = sysvinit
-Requires:	clamav-milter = %version-%release
-Requires(post):		user(%milteruser) clamav-milter
-Requires(preun):	user(%milteruser) clamav-milter
-Requires(pre):		%_initrddir
-Requires(postun):	%_initrddir initscripts
-Requires(post):		chkconfig
-Requires(preun):	chkconfig initscripts
-Provides:		clamav-milter-sysv = %version-%release
-Obsoletes:		clamav-milter-sysv < %version-%release
-%{?noarch}
-%endif
-
-# Remove me after EOL of RHEL6
-%package milter-upstart
-Summary:	Upstart initscripts for the clamav sendmail-milter
-Group:		System Environment/Daemons
-Source310:	clamav-milter.upstart
-Provides:	init(clamav-milter) = upstart
-Requires:	clamav-milter = %version-%release
-Requires(pre):		/etc/init
-Requires(post):		/usr/bin/killall
-Requires(preun):	/sbin/initctl
-%{?noarch}
-
-%package milter-systemd
-Summary:	Systemd initscripts for the clamav sendmail-milter
-Group:		System Environment/Daemons
-Source330:	clamav-milter.systemd
-Provides:	init(clamav-milter) = systemd
-Requires:	clamav-milter = %version-%release
-%{?systemd_reqs}
-%{?noarch}
-
 
 %description
 Clam AntiVirus is an anti-virus toolkit for UNIX. The main purpose of this
@@ -304,10 +136,6 @@ the virus database from OpenAntiVirus, but contains additional signatures
 (including signatures for popular polymorphic viruses, too) and is KEPT UP
 TO DATE.
 
-%description filesystem
-This package provides the filesystem structure and contains the
-user-creation scripts required by clamav.
-
 %description lib
 This package contains dynamic libraries shared between applications
 using the Clam Antivirus scanner.
@@ -319,87 +147,10 @@ build applications using clamav.
 %description data
 This package contains the virus-database needed by clamav. This
 database should be updated regularly; the 'clamav-update' package
-ships a corresponding cron-job. This package and the
-'clamav-data-empty' package are mutually exclusive.
-
-Use -data when you want a working (but perhaps outdated) virus scanner
-immediately after package installation.
-
-Use -data-empty when you are updating the virus database regulary and
-do not want to download a >5MB sized rpm-package with outdated virus
-definitions.
-
-
-%description data-empty
-This is an empty package to fulfill inter-package dependencies of the
-clamav suite. This package and the 'clamav-data' package are mutually
-exclusive.
-
-Use -data when you want a working (but perhaps outdated) virus scanner
-immediately after package installation.
-
-Use -data-empty when you are updating the virus database regulary and
-do not want to download a >5MB sized rpm-package with outdated virus
-definitions.
-
-
-%description update
-This package contains programs which can be used to update the clamav
-anti-virus database automatically. It uses the freshclam(1) utility for
-this task. To activate it, uncomment the entry in /etc/cron.d/clamav-update.
+ships a corresponding cron-job.
 
 %description server
-ATTENTION: most users do not need this package; the main package has
-everything (or depends on it) which is needed to scan for virii on
-workstations.
-
 This package contains files which are needed to execute the clamd-daemon.
-This daemon does not provide a system-wide service. Instead of, an instance
-of this daemon should be started for each service requiring it.
-
-See the README file how this can be done with a minimum of effort.
-
-
-%if 0%{?with_sysv:1}
-%description server-sysvinit
-SysV initscripts template for the clamav server
-%endif
-
-%description server-systemd
-Systemd template for the clamav server
-
-
-%description scanner
-This package contains a generic system wide clamd service which is
-e.g. used by the clamav-milter package.
-
-%if 0%{?with_sysv:1}
-%description scanner-sysvinit
-The SysV initscripts for clamav-scanner.
-%endif
-
-%description scanner-upstart
-The Upstart initscripts for clamav-scanner.
-
-%description scanner-systemd
-The systemd initscripts for clamav-scanner.
-
-
-%description milter
-This package contains files which are needed to run the clamav-milter.
-
-%if 0%{?with_sysv:1}
-%description milter-sysvinit
-The SysV initscripts for clamav-milter.
-%endif
-
-%description milter-upstart
-The Upstart initscripts for clamav-milter.
-
-%description milter-systemd
-The systemd initscripts for clamav-scanner.
-
-## ------------------------------------------------------------
 
 %prep
 %setup -q -n %{name}-%{version}%{?prerelease}
@@ -410,8 +161,6 @@ The systemd initscripts for clamav-scanner.
 %apply -n29 -p1 -b .jitoff
 %apply -n30 -p1
 %{?apply_end}
-
-install -p -m0644 %SOURCE300 clamav-milter/
 
 mkdir -p libclamunrar{,_iface}
 %{!?with_unrar:touch libclamunrar/{Makefile.in,all,install}}
@@ -449,7 +198,7 @@ export have_cv_ipv6=yes
 	--with-group=%username \
 	--with-libcurl=%{_prefix} \
 	--with-dbdir=/var/lib/clamav \
-	--enable-milter \
+	--disable-milter \
 	--enable-clamdtop \
 	%{!?with_bytecode:--disable-llvm} \
 	%{!?with_unrar:--disable-unrar}
@@ -473,28 +222,13 @@ make %{?_smp_mflags}
 rm -rf "$RPM_BUILD_ROOT" _doc*
 make DESTDIR="$RPM_BUILD_ROOT" install
 
-function smartsubst() {
-	local tmp
-	local regexp=$1
-	shift
-
-	tmp=$(mktemp /tmp/%name-subst.XXXXXX)
-	for i; do
-		sed -e "$regexp" "$i" >$tmp
-		cmp -s $tmp "$i" || cat $tmp >"$i"
-		rm -f $tmp
-	done
-}
-
-
 install -d -m 0755 \
-	$RPM_BUILD_ROOT%_sysconfdir/{mail,clamd.d,logrotate.d,tmpfiles.d} \
+	$RPM_BUILD_ROOT%_sysconfdir/{mail,clamd.d,logrotate.d} \
 	$RPM_BUILD_ROOT%_var/{log,run} \
-	$RPM_BUILD_ROOT%milterstatedir \
-	$RPM_BUILD_ROOT%pkgdatadir/template \
-	$RPM_BUILD_ROOT%_initrddir \
+    $RPM_BUILD_ROOT%pkgdatadir \
 	$RPM_BUILD_ROOT%homedir \
-	$RPM_BUILD_ROOT%scanstatedir
+	$RPM_BUILD_ROOT%scanstatedir \
+	$RPM_BUILD_ROOT/usr/lib/tmpfiles.d
 
 rm -f	$RPM_BUILD_ROOT%_sysconfdir/clamd.conf.sample \
 	$RPM_BUILD_ROOT%_libdir/*.la
@@ -506,96 +240,25 @@ touch $RPM_BUILD_ROOT%homedir/main.cld
 install -D -m 0644 -p %SOURCE10		$RPM_BUILD_ROOT%homedir/main.cvd
 install -D -m 0644 -p %SOURCE11		$RPM_BUILD_ROOT%homedir/daily.cvd
 
-## prepare the server-files
-install -D -m 0644 -p %SOURCE2		_doc_server/clamd.sysconfig
-install -D -m 0644 -p %SOURCE3		_doc_server/clamd.logrotate
-%if 0%{?with_sysv:1}
-install -D -m 0755 -p %SOURCE7		_doc_server/clamd.init
-%endif
-install -D -m 0644 -p %SOURCE5		_doc_server/README
-install -D -m 0644 -p etc/clamd.conf.sample	_doc_server/clamd.conf
-
-%if 0%{?with_sysv:1}
-install -m 0644 -p %SOURCE520		$RPM_BUILD_ROOT%pkgdatadir/
-%endif
-install -m 0755 -p %SOURCE100		$RPM_BUILD_ROOT%pkgdatadir/
-cp -pa _doc_server/*			$RPM_BUILD_ROOT%pkgdatadir/template
-
-%if 0%{?with_sysv:1}
-smartsubst 's!/usr/share/clamav!%pkgdatadir!g' $RPM_BUILD_ROOT%pkgdatadir/clamd-wrapper
-%endif
-install -D -p -m 0644 %SOURCE530        $RPM_BUILD_ROOT%_unitdir/clamd@.service
+install -D -p -m 0644 %SOURCE1000        $RPM_BUILD_ROOT/lib/systemd/system/clamd.service
 
 
 ## prepare the update-files
 install -D -m 0644 -p %SOURCE203	$RPM_BUILD_ROOT%_sysconfdir/logrotate.d/freshclam
-install -D -m 0755 -p %SOURCE8		$RPM_BUILD_ROOT%_sbindir/clamav-notify-servers
 mkdir -p $RPM_BUILD_ROOT%_var/log/clamav
 touch $RPM_BUILD_ROOT%freshclamlog
 
-install -D -p -m 0755 %SOURCE200	$RPM_BUILD_ROOT%pkgdatadir/freshclam-sleep
-install -D -p -m 0644 %SOURCE201	$RPM_BUILD_ROOT%_sysconfdir/sysconfig/freshclam
 mv -f $RPM_BUILD_ROOT%_sysconfdir/freshclam.conf{.sample,}
-
-smartsubst 's!webmaster,clamav!webmaster,%username!g;
-	    s!/usr/share/clamav!%pkgdatadir!g;
-	    s!/usr/bin!%_bindir!g;
-            s!/usr/sbin!%_sbindir!g;' \
-   $RPM_BUILD_ROOT%pkgdatadir/freshclam-sleep
-
 
 ### The scanner stuff
 sed -e 's!<SERVICE>!scan!g;s!<USER>!%scanuser!g' \
     etc/clamd.conf.sample > $RPM_BUILD_ROOT%_sysconfdir/clamd.conf
 
-%if 0%{?with_sysv:1}
-sed -e 's!<SERVICE>!scan!g;' $RPM_BUILD_ROOT%pkgdatadir/template/clamd.init \
-    > $RPM_BUILD_ROOT%_initrddir/clamd.scan
-%endif
-
-install -D -p -m 0644 %SOURCE410 $RPM_BUILD_ROOT%_sysconfdir/init/clamd.scan.conf
-install -D -p -m 0644 %SOURCE430 $RPM_BUILD_ROOT%_unitdir/clamd@scan.service
-
-cat << EOF > $RPM_BUILD_ROOT%_sysconfdir/tmpfiles.d/clamd.conf
+cat << EOF > $RPM_BUILD_ROOT/usr/lib/tmpfiles.d/clamd.conf
 d %scanstatedir 0775 %scanuser %scanuser
 EOF
 
-touch $RPM_BUILD_ROOT%scanstatedir/clamd.{sock,pid}
-
-
-### The milter stuff
-sed -r \
-    -e 's!^#?(User).*!\1 %milteruser!g' \
-    -e 's!^#?(AllowSupplementaryGroups|LogSyslog) .*!\1 yes!g' \
-    -e 's! /tmp/clamav-milter.socket! %milterstatedir/clamav-milter.socket!g' \
-    -e 's! /var/run/clamav-milter.pid! %milterstatedir/clamav-milter.pid!g' \
-    -e 's! /tmp/clamav-milter.log! %milterlog!g' \
-    etc/clamav-milter.conf.sample > $RPM_BUILD_ROOT%_sysconfdir/mail/clamav-milter.conf
-
-install -D -p -m 0644 %SOURCE310 $RPM_BUILD_ROOT%_sysconfdir/init/clamav-milter.conf
-%if 0%{?with_sysv:1}
-install -D -p -m 0755 %SOURCE320 $RPM_BUILD_ROOT%_initrddir/clamav-milter
-%endif
-install -D -p -m 0644 %SOURCE330 $RPM_BUILD_ROOT%_unitdir/clamav-milter.service
-
-cat << EOF > $RPM_BUILD_ROOT%_sysconfdir/tmpfiles.d/clamav-milter.conf
-d %milterstatedir 0710 %milteruser %milteruser
-EOF
-
-rm -f $RPM_BUILD_ROOT%_sysconfdir/clamav-milter.conf.sample
-touch $RPM_BUILD_ROOT{%milterstatedir/clamav-milter.{socket,pid},%milterlog}
-
-%{!?with_upstart:  rm -rf $RPM_BUILD_ROOT%_sysconfdir/init}
-%{!?with_systemd:  rm -rf $RPM_BUILD_ROOT%_unitdir}
-%{!?with_sysv:     rm -f  $RPM_BUILD_ROOT%_initrddir/*}
-%{!?with_sysv:     rm -rf $RPM_BUILD_ROOT%_var/run/*/*.pid}
-%{!?with_tmpfiles: rm -rf $RPM_BUILD_ROOT%_sysconfdir/tmpfiles.d}
-
-%if 0%{?with_sysv:1}
-# keep clamd-wrapper in every case because it might be needed by other
-# packages
-ln -s %pkgdatadir/clamd-wrapper		$RPM_BUILD_ROOT%_initrddir/clamd-wrapper
-%endif
+rm -f $RPM_BUILD_ROOT%{_mandir}/man8/clamav-milter.*
 
 ## ------------------------------------------------------------
 
@@ -609,58 +272,20 @@ rm -rf "$RPM_BUILD_ROOT"
 
 ## ------------------------------------------------------------
 
-%pre filesystem
+%pre
 getent group %{username} >/dev/null || groupadd -r %{username}
 getent passwd %{username} >/dev/null || \
     useradd -r -g %{username} -d %{homedir} -s /sbin/nologin \
     -c "Clamav database update user" %{username}
 exit 0
 
+%preun server
+%systemd_preun clamd.service 
 
-%pre scanner
-getent group %{scanuser} >/dev/null || groupadd -r %{scanuser}
-getent passwd %{scanuser} >/dev/null || \
-    useradd -r -g %{scanuser} -d / -s /sbin/nologin \
-    -c "Clamav scanner user" %{scanuser}
-exit 0
+%post server
+/bin/systemd-tmpfiles --create /usr/lib/tmpfiles.d/clamd.conf || :
+%systemd_post clamd.service
 
-
-%{?with_tmpfiles:
-%post scanner
-%{?with_systemd:/bin/systemd-tmpfiles --create %_sysconfdir/tmpfiles.d/clamd.conf || :}}
-
-
-%post server-systemd
-test "$1" != "1" || /bin/systemctl daemon-reload >/dev/null 2>&1 || :
-
-%postun server-systemd
-/bin/systemctl daemon-reload >/dev/null 2>&1 || :
-
-
-%if 0%{?with_sysv:1}
-%post scanner-sysvinit
-/sbin/chkconfig --add clamd.scan
-
-%preun scanner-sysvinit
-test "$1" != 0 || %_initrddir/clamd.scan stop &>/dev/null || :
-test "$1" != 0 || /sbin/chkconfig --del clamd.scan
-
-%postun scanner-sysvinit
-test "$1"  = 0 || %_initrddir/clamd.scan condrestart >/dev/null || :
-%endif
-
-
-%post scanner-upstart
-/usr/bin/killall -u %scanuser clamd 2>/dev/null || :
-
-%preun scanner-upstart
-test "$1" != "0" || /sbin/initctl -q stop clamd.scan || :
-
-
-%systemd_install scanner-systemd clamd@scan.service
-
-
-%post update
 test -e %freshclamlog || {
 	touch %freshclamlog
 	%__chmod 0664 %freshclamlog
@@ -668,61 +293,8 @@ test -e %freshclamlog || {
 	! test -x /sbin/restorecon || /sbin/restorecon %freshclamlog
 }
 
-%triggerin update -- %name-update < 0.97.3-1704
-# remove me after F19
-! test -x /sbin/restorecon || /sbin/restorecon %freshclamlog &>/dev/null || :
-
-
-%triggerin milter -- clamav-scanner
-# Add the milteruser to the scanuser group; this is required when
-# milter and clamd communicate through local sockets
-/usr/sbin/groupmems -g %scanuser -a %milteruser &>/dev/null || :
-
-%pre milter
-getent group %{milteruser} >/dev/null || groupadd -r %{milteruser}
-getent passwd %{milteruser} >/dev/null || \
-    useradd -r -g %{milteruser} -d %{milterstatedir} -s /sbin/nologin \
-    -c "Clamav Milter user" %{milteruser}
-exit 0
-
-
-%post milter
-test -e %milterlog || {
-	touch %milterlog
-	chmod 0620             %milterlog
-	chown root:%milteruser %milterlog
-	! test -x /sbin/restorecon || /sbin/restorecon %milterlog
-}
-%{?with_systemd:/bin/systemd-tmpfiles --create %_sysconfdir/tmpfiles.d/clamav-milter.conf || :}
-
-
-%triggerin milter -- %name-milter < 0.97.3-1704
-# remove me after F19
-! test -x /sbin/restorecon || /sbin/restorecon %milterlog &>/dev/null || :
-
-
-%if 0%{?with_sysv:1}
-%post milter-sysvinit
-/sbin/chkconfig --add clamav-milter
-
-%preun milter-sysvinit
-test "$1" != 0 || %_initrddir/clamav-milter stop &>/dev/null || :
-test "$1" != 0 || /sbin/chkconfig --del clamav-milter
-
-%postun milter-sysvinit
-test "$1"  = 0 || %_initrddir/clamav-milter condrestart >/dev/null || :
-%endif
-
-
-%post milter-upstart
-/usr/bin/killall -u %milteruser clamav-milter 2>/dev/null || :
-
-%preun milter-upstart
-test "$1" != "0" || /sbin/initctl -q stop clamav-milter || :
-
-
-%systemd_install milter-systemd clamav-milter.service
-
+%postun server
+%systemd_postun_with_restart clamd.service
 
 %post   lib -p /sbin/ldconfig
 %postun lib -p /sbin/ldconfig
@@ -732,11 +304,16 @@ test "$1" != "0" || /sbin/initctl -q stop clamav-milter || :
 %defattr(-,root,root,-)
 %doc AUTHORS BUGS COPYING ChangeLog FAQ NEWS README UPGRADE
 %doc docs/*.pdf
+%attr(-,%username,%username) %dir %_var/log/clamav/
+%attr(-,%username,%username) %dir %homedir
+%attr(-,root,root)           %dir %pkgdatadir
 %_bindir/*
 %_mandir/man[15]/*
 %exclude %_bindir/clamav-config
-%exclude %_bindir/freshclam
-%exclude %_mandir/*/freshclam*
+%config(noreplace) %verify(not mtime)    %_sysconfdir/freshclam.conf
+%config(noreplace) %verify(not mtime)    %_sysconfdir/logrotate.d/*
+%ghost %attr(0664,root,%username) %verify(not size md5 mtime) %freshclamlog
+%ghost %attr(0664,%username,%username) %homedir/*.cld
 
 ## -----------------------
 
@@ -750,16 +327,8 @@ test "$1" != "0" || /sbin/initctl -q stop clamav-milter || :
 %defattr(-,root,root,-)
 %_includedir/*
 %_libdir/*.so
-%pkgdatadir/template
-%pkgdatadir/clamd-gen
 %_libdir/pkgconfig/*
 %_bindir/clamav-config
-
-## -----------------------
-
-%files filesystem
-%attr(-,%username,%username) %dir %homedir
-%attr(-,root,root)           %dir %pkgdatadir
 
 ## -----------------------
 
@@ -770,124 +339,21 @@ test "$1" != "0" || /sbin/initctl -q stop clamav-milter || :
 # versions whenever a new -data package is installed.
 %config %verify(not size md5 mtime) %homedir/*.cvd
 
-
-%files data-empty
-%defattr(-,%username,%username,-)
-%ghost %attr(0664,%username,%username) %homedir/*.cvd
-
-
-## -----------------------
-
-%files update
-%defattr(-,root,root,-)
-%_bindir/freshclam
-%_mandir/*/freshclam*
-%pkgdatadir/freshclam-sleep
-%config(noreplace) %verify(not mtime)    %_sysconfdir/freshclam.conf
-%config(noreplace) %verify(not mtime)    %_sysconfdir/logrotate.d/*
-%config(noreplace) %_sysconfdir/sysconfig/freshclam
-
-%ghost %attr(0664,root,%username) %verify(not size md5 mtime) %freshclamlog
-%ghost %attr(0664,%username,%username) %homedir/*.cld
-
-
-## -----------------------
-
 %files server
 %defattr(-,root,root,-)
-%doc _doc_server/*
+%config(noreplace) %_sysconfdir/clamd.conf
+/usr/lib/tmpfiles.d/clamd.conf
 %_mandir/man[58]/clamd*
 %_sbindir/*
+/lib/systemd/system/clamd.service
 %dir %_sysconfdir/clamd.d
-
-%exclude %_sbindir/*milter*
-%exclude %_mandir/man8/clamav-milter*
-
-
-%if 0%{?with_sysv:1}
-%files server-sysvinit
-%defattr(-,root,root,-)
-%_initrddir/clamd-wrapper
-%pkgdatadir/clamd-wrapper
-%endif
-
-%if 0%{?with_systemd:1}
-%files server-systemd
- %defattr(-,root,root,-)
- %_unitdir/clamd@.service
-%endif
-
-## -----------------------
-
-%files scanner
-%defattr(-,root,root,-)
-%config(noreplace) %_sysconfdir/clamd.conf
-%ghost %scanstatedir/clamd.sock
-
-%if 0%{?with_tmpfiles:1}
-  %_sysconfdir/tmpfiles.d/clamd.conf
-  %ghost %dir %attr(0710,%scanuser,%scanuser) %scanstatedir
-%else
-  %dir %attr(0710,%scanuser,%scanuser) %scanstatedir
-%endif
-
-%if 0%{?with_sysv:1}
-%files scanner-sysvinit
-  %attr(0755,root,root) %config %_initrddir/clamd.scan
-  %ghost %scanstatedir/clamd.pid
-%endif
-
-%if 0%{?with_upstart:1}
-%files scanner-upstart
-  %defattr(-,root,root,-)
-  %config(noreplace) %_sysconfdir/init/clamd.scan*
-%endif
-
-%if 0%{?with_systemd:1}
-%files scanner-systemd
-  %defattr(-,root,root,-)
-  %_unitdir/clamd@scan.service
-%endif
-
-## -----------------------
-
-%files milter
-%defattr(-,root,root,-)
-%doc clamav-milter/README.fedora
-%_sbindir/*milter*
-%_mandir/man8/clamav-milter*
-%config(noreplace) %_sysconfdir/mail/clamav-milter.conf
-%ghost %attr(0620,root,%milteruser) %verify(not size md5 mtime) %milterlog
-%ghost %milterstatedir/clamav-milter.socket
-
-%if 0%{?with_tmpfiles:1}
-  %_sysconfdir/tmpfiles.d/clamav-milter.conf
-  %ghost %dir %attr(0710,%milteruser,%milteruser) %milterstatedir
-%else
-  %dir %attr(0710,%milteruser,%milteruser) %milterstatedir
-%endif
-
-%if 0%{?with_sysv:1}
-%files milter-sysvinit
-  %defattr(-,root,root,-)
-  %config %_initrddir/clamav-milter
-  %ghost %milterstatedir/clamav-milter.pid
-%endif
-
-%if 0%{?with_upstart:1}
-%files milter-upstart
-  %defattr(-,root,root,-)
-  %config(noreplace) %_sysconfdir/init/clamav-milter*
-%endif
-
-%if 0%{?with_systemd:1}
-%files milter-systemd
-  %defattr(-,root,root,-)
-  %_unitdir/clamav-milter.service
-%endif
+%ghost %dir %attr(0755,%username,%username) %scanstatedir
 
 
 %changelog
+* Mon Jul 13 2015 ClearFoundation <developer@clearfoundation.com> - 0.98.7-2.clear
+- Import heavily modified EPEL spec file
+
 * Wed Jun 17 2015 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.98.7-2
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_23_Mass_Rebuild
 
