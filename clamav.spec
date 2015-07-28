@@ -28,7 +28,7 @@
 %global freshclamlog	%_var/log/clamav/freshclam.log
 %global pkgdatadir	%_datadir/%name
 
-%global scanuser	clamscan
+%global scanuser	clam
 
 %global scanstatedir	%_var/run/clamav
 
@@ -54,7 +54,7 @@ Requires(postun):	 /bin/systemctl\
 Summary:	End-user tools for the Clam Antivirus scanner
 Name:		clamav
 Version:	0.98.7
-Release:	3%{?dist}.1
+Release:	3%{?dist}.2
 License:	%{?with_unrar:proprietary}%{!?with_unrar:GPLv2}
 Group:		Applications/File
 URL:		http://www.clamav.net
@@ -91,6 +91,17 @@ BuildRequires:	%_includedir/tcpd.h
 %{?with_bytecode:BuildRequires:	ocaml}
 %endif
 
+%package filesystem
+Summary:	Filesystem structure for clamav
+Group:		Applications/File
+Provides:	user(%username)  = 4
+Provides:	group(%username) = 4
+# Prevent version mix
+Conflicts:	%name < %version-%release
+Conflicts:	%name > %version-%release
+Requires(pre):  shadow-utils
+%{?noarch}
+
 %package lib
 Summary:	Dynamic libraries for the Clam Antivirus scanner
 Group:		System Environment/Libraries
@@ -100,10 +111,13 @@ Requires:	data(clamav)
 Summary:	Header files and libraries for the Clam Antivirus scanner
 Group:		Development/Libraries
 Requires:	clamav-lib        = %version-%release
+Requires:	clamav-filesystem = %version-%release
 
 %package data
 Summary:	Virus signature data for the Clam Antivirus scanner
 Group:		Applications/File
+Requires(pre):		clamav-filesystem = %version-%release
+Requires(postun):	clamav-filesystem = %version-%release
 Provides:		data(clamav) = full
 Conflicts:		data(clamav) < full
 Conflicts:		data(clamav) > full
@@ -117,7 +131,7 @@ Source203:	clamav-update.logrotate
 Source1000: clamd.service
 Requires:	crontabs
 Requires:	data(clamav)
-Requires:	clamav        = %version-%release
+Requires:	clamav-filesystem = %version-%release
 Requires:	clamav-lib        = %version-%release
 Requires:	nc coreutils
 Requires(pre):		/etc/cron.d
@@ -135,6 +149,10 @@ which you can use with your own software. The virus database is based on
 the virus database from OpenAntiVirus, but contains additional signatures
 (including signatures for popular polymorphic viruses, too) and is KEPT UP
 TO DATE.
+
+%description filesystem
+This package provides the filesystem structure and contains the
+user-creation scripts required by clamav.
 
 %description lib
 This package contains dynamic libraries shared between applications
@@ -272,7 +290,7 @@ rm -rf "$RPM_BUILD_ROOT"
 
 ## ------------------------------------------------------------
 
-%pre
+%pre filesystem
 getent group %{username} >/dev/null || groupadd -r %{username}
 getent passwd %{username} >/dev/null || \
     useradd -r -g %{username} -d %{homedir} -s /sbin/nologin \
@@ -304,12 +322,10 @@ test -e %freshclamlog || {
 %defattr(-,root,root,-)
 %doc AUTHORS BUGS COPYING ChangeLog FAQ NEWS README UPGRADE
 %doc docs/*.pdf
-%attr(-,%username,%username) %dir %_var/log/clamav/
-%attr(-,%username,%username) %dir %homedir
-%attr(-,root,root)           %dir %pkgdatadir
 %_bindir/*
 %_mandir/man[15]/*
 %exclude %_bindir/clamav-config
+%attr(-,%username,%username) %dir %_var/log/clamav/
 %config(noreplace) %verify(not mtime)    %_sysconfdir/freshclam.conf
 %config(noreplace) %verify(not mtime)    %_sysconfdir/logrotate.d/*
 %ghost %attr(0664,root,%username) %verify(not size md5 mtime) %freshclamlog
@@ -332,6 +348,12 @@ test -e %freshclamlog || {
 
 ## -----------------------
 
+%files filesystem
+%attr(-,%username,%username) %dir %homedir
+%attr(-,root,root)           %dir %pkgdatadir
+
+## -----------------------
+
 %files data
 %defattr(-,%username,%username,-)
 # use %%config to keep files which were updated by 'freshclam'
@@ -351,7 +373,7 @@ test -e %freshclamlog || {
 
 
 %changelog
-* Mon Jul 13 2015 ClearFoundation <developer@clearfoundation.com> - 0.98.7-2.clear
+* Thu Jul 16 2015 ClearFoundation <developer@clearfoundation.com> - 0.98.7-3.clear.2
 - Import heavily modified EPEL spec file
 
 * Wed Jun 17 2015 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.98.7-2
