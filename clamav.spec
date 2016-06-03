@@ -1,4 +1,5 @@
 #global prerelease	rc1
+%global with_unrar	1
 
 ## Fedora Extras specific customization below...
 %bcond_without		fedora
@@ -53,8 +54,8 @@ Requires(postun):	 /bin/systemctl\
 
 Summary:	End-user tools for the Clam Antivirus scanner
 Name:		clamav
-Version:	0.98.7
-Release:	3%{?dist}.3
+Version:	0.99.2
+Release:	1%{?dist}
 License:	%{?with_unrar:proprietary}%{!?with_unrar:GPLv2}
 Group:		Applications/File
 URL:		http://www.clamav.net
@@ -68,21 +69,22 @@ Source999:	http://download.sourceforge.net/sourceforge/clamav/%name-%version%{?p
 #  make clean-sources NAME=clamav VERSION=<version> TARBALL=clamav-<version>.tar.gz TARBALL_CLEAN=clamav-<version>-norar.tar.xz
 Source0:	%name-%version%{?prerelease}-norar.tar.xz
 %endif
-# To download the *.cvd, go to http://www.clamav.net and use the links
-# there (I renamed the files to add the -version suffix for verifying).
-Source10:	http://db.local.clamav.net/main-55.cvd
-Source11:	http://db.local.clamav.net/daily-20394.cvd
+Source10:	http://db.local.clamav.net/main.cvd
+Source11:	http://db.local.clamav.net/daily.cvd
+Source12:	http://db.local.clamav.net/bytecode.cvd
 
-Patch24:	clamav-0.92-private.patch
+Patch24:	clamav-0.99-private.patch
 Patch26:	clamav-0.98.5-cliopts.patch
 Patch27:	clamav-0.98-umask.patch
 # https://bugzilla.redhat.com/attachment.cgi?id=403775&action=diff&context=patch&collapsed=&headers=1&format=raw
-Patch29:	clamav-0.98.6-jitoff.patch
+Patch29:	clamav-0.99.1-jitoff.patch
 # https://llvm.org/viewvc/llvm-project/llvm/trunk/lib/ExecutionEngine/JIT/Intercept.cpp?r1=128086&r2=137567
 Patch30:	llvm-glibc.patch
+Patch31:	clamav-0.99.1-setsebool.patch
 BuildRoot:	%_tmppath/%name-%version-%release-root
 Requires:	clamav-lib = %version-%release
 Requires:	data(clamav)
+BuildRequires:  pcre-devel
 BuildRequires:	zlib-devel bzip2-devel gmp-devel curl-devel
 BuildRequires:	ncurses-devel openssl-devel libxml2-devel
 BuildRequires:	%_includedir/tcpd.h
@@ -112,6 +114,7 @@ Summary:	Header files and libraries for the Clam Antivirus scanner
 Group:		Development/Libraries
 Requires:	clamav-lib        = %version-%release
 Requires:	clamav-filesystem = %version-%release
+Requires:	openssl-devel
 
 %package data
 Summary:	Virus signature data for the Clam Antivirus scanner
@@ -174,10 +177,11 @@ This package contains files which are needed to execute the clamd-daemon.
 %setup -q -n %{name}-%{version}%{?prerelease}
 
 %apply -n24 -p1 -b .private
-%apply -n26 -p1 -b .cliopts
+#% apply -n26 -p1 -b .cliopts
 %apply -n27 -p1 -b .umask
 %apply -n29 -p1 -b .jitoff
 %apply -n30 -p1
+%apply -n31 -p1 -b .setsebool
 %{?apply_end}
 
 mkdir -p libclamunrar{,_iface}
@@ -202,7 +206,8 @@ sed -ri \
 
 %build
 CFLAGS="$RPM_OPT_FLAGS -Wall -W -Wmissing-prototypes -Wmissing-declarations -std=gnu99"
-export LDFLAGS='-Wl,--as-needed'
+CXXFLAGS="$RPM_OPT_FLAGS -std=gnu++98"
+export LDFLAGS='%{?__global_ldflags} -Wl,--as-needed'
 # HACK: remove me...
 export FRESHCLAM_LIBS='-lz'
 # IPv6 check is buggy and does not work when there are no IPv6 interface on build machine
@@ -242,6 +247,7 @@ make DESTDIR="$RPM_BUILD_ROOT" install
 
 install -d -m 0755 \
 	$RPM_BUILD_ROOT%_sysconfdir/{mail,clamd.d,logrotate.d} \
+	$RPM_BUILD_ROOT%_tmpfilesdir \
 	$RPM_BUILD_ROOT%_var/{log,run} \
     $RPM_BUILD_ROOT%pkgdatadir \
 	$RPM_BUILD_ROOT%homedir \
@@ -252,8 +258,8 @@ rm -f	$RPM_BUILD_ROOT%_sysconfdir/clamd.conf.sample \
 	$RPM_BUILD_ROOT%_libdir/*.la
 
 
-touch $RPM_BUILD_ROOT%homedir/daily.cld
-touch $RPM_BUILD_ROOT%homedir/main.cld
+#touch $RPM_BUILD_ROOT%homedir/daily.cld
+#touch $RPM_BUILD_ROOT%homedir/main.cld
 
 install -D -m 0644 -p %SOURCE10		$RPM_BUILD_ROOT%homedir/main.cvd
 install -D -m 0644 -p %SOURCE11		$RPM_BUILD_ROOT%homedir/daily.cvd
@@ -277,6 +283,10 @@ d %scanstatedir 0775 %scanuser %scanuser
 EOF
 
 rm -f $RPM_BUILD_ROOT%{_mandir}/man8/clamav-milter.*
+rm -fv $RPM_BUILD_ROOT/usr/lib/systemd/system/clamav-daemon.service
+rm -fv $RPM_BUILD_ROOT/usr/lib/systemd/system/clamav-daemon.socket
+rm -fv $RPM_BUILD_ROOT/usr/lib/systemd/system/clamav-freshclam.service
+
 
 ## ------------------------------------------------------------
 
@@ -289,6 +299,10 @@ make check
 rm -rf "$RPM_BUILD_ROOT"
 
 ## ------------------------------------------------------------
+
+%post data
+[ -e %homedir/daily.cld ] && rm -f %homedir/daily.cld
+exit 0
 
 %pre filesystem
 getent group %{username} >/dev/null || groupadd -r %{username}
@@ -329,7 +343,7 @@ test -e %freshclamlog || {
 %config(noreplace) %verify(not mtime)    %_sysconfdir/freshclam.conf
 %config(noreplace) %verify(not mtime)    %_sysconfdir/logrotate.d/*
 %ghost %attr(0664,root,%username) %verify(not size md5 mtime) %freshclamlog
-%ghost %attr(0664,%username,%username) %homedir/*.cld
+#% ghost %attr(0664,%username,%username) %homedir/*.cld
 
 ## -----------------------
 
@@ -373,8 +387,30 @@ test -e %freshclamlog || {
 
 
 %changelog
-* Thu Jul 16 2015 ClearFoundation <developer@clearfoundation.com> - 0.98.7-3.clear.2
-- Import heavily modified EPEL spec file
+* Thu Jun 02 2016 ClearFoundation <developer@clearfoundation.com> - 0.99.2-1.clear
+- Merged 0.99.2
+
+* Tue Mar 29 2016 Robert Scheck <robert@fedoraproject.org> - 0.99.1-1
+- Upgrade to 0.99.1 and updated main.cvd and daily.cvd (#1314115)
+- Complain about antivirus_use_jit rather clamd_use_jit (#1295473)
+
+* Tue Mar 29 2016 Robert Scheck <robert@fedoraproject.org> - 0.99-4
+- Link using %%{?__global_ldflags} for hardened builds (#1321173)
+- Build using -std=gnu++98 (#1307378, thanks to Yaakov Selkowitz)
+
+* Wed Feb 03 2016 Fedora Release Engineering <releng@fedoraproject.org> - 0.99-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_24_Mass_Rebuild
+
+* Sun Dec 06 2015 Robert Scheck <robert@fedoraproject.org> - 0.99-2
+- Require openssl-devel for clamav-devel
+- Change clamav-milter unit for upstream changes (#1287795)
+
+* Wed Dec 02 2015 Robert Scheck <robert@fedoraproject.org> - 0.99-1
+- Upgrade to 0.99 and updated daily.cvd (#1287327)
+
+* Tue Jun 30 2015 Robert Scheck <robert@fedoraproject.org> - 0.98.7-3
+- Move /etc/tmpfiles.d/ to /usr/lib/tmpfiles.d/ (#1126595)
+>>>>>>> epel7
 
 * Wed Jun 17 2015 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.98.7-2
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_23_Mass_Rebuild

@@ -1,0 +1,15 @@
+Patch by Robert Scheck <robert@fedoraproject.org> for clamav >= 0.99.1 which changes the SELinux
+boolean name from the obsolete (and former alias) clamd_use_jit to the current antivirus_use_jit.
+See also: https://bugzilla.redhat.com/show_bug.cgi?id=1295473
+
+--- clamav-0.99.1/libclamav/builtin_bytecodes.h			2015-12-11 17:26:02.000000000 +0100
++++ clamav-0.99.1/libclamav/builtin_bytecodes.h.setsebool	2016-03-29 23:32:03.000000000 +0200
+@@ -139,7 +139,7 @@
+         if (env.os_features & (1 << feature_selinux))
+           /* all SELinux versions deny RWX mapping when policy says so */
+           disable_jit_if("^SELinux is preventing 'execmem' access.\n"
+-                         "Run  'setsebool -P clamd_use_jit on'.", 0, 1);
++                         "Run 'setsebool -P antivirus_use_jit on'.", 0, 1);
+         else if (env.os_features & (1 << feature_pax))
+           /* recent versions of PaX deny RWX mapping */
+           disable_jit_if("^PaX is preventing 'mprotect' access.\n"
