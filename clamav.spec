@@ -55,7 +55,7 @@ Requires(postun):	 /bin/systemctl\
 Summary:	End-user tools for the Clam Antivirus scanner
 Name:		clamav
 Version:	0.99.2
-Release:	1%{?dist}
+Release:	2%{?dist}
 License:	%{?with_unrar:proprietary}%{!?with_unrar:GPLv2}
 Group:		Applications/File
 URL:		http://www.clamav.net
@@ -84,6 +84,8 @@ Patch31:	clamav-0.99.1-setsebool.patch
 BuildRoot:	%_tmppath/%name-%version-%release-root
 Requires:	clamav-lib = %version-%release
 Requires:	data(clamav)
+Provides:   clamav-update
+Obsoletes:   clamav-update
 BuildRequires:  pcre-devel
 BuildRequires:	zlib-devel bzip2-devel gmp-devel curl-devel
 BuildRequires:	ncurses-devel openssl-devel libxml2-devel
