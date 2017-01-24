@@ -55,7 +55,7 @@ Requires(postun):	 /bin/systemctl\
 Summary:	End-user tools for the Clam Antivirus scanner
 Name:		clamav
 Version:	0.99.2
-Release:	2%{?dist}
+Release:	3%{?dist}
 License:	%{?with_unrar:proprietary}%{!?with_unrar:GPLv2}
 Group:		Applications/File
 URL:		http://www.clamav.net
@@ -134,6 +134,7 @@ Group:		System Environment/Daemons
 Source3:	clamd.logrotate
 Source203:	clamav-update.logrotate
 Source1000: clamd.service
+Provides:   clamav-server-systemd
 Requires:	crontabs
 Requires:	data(clamav)
 Requires:	clamav-filesystem = %version-%release
