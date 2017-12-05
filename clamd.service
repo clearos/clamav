@@ -9,6 +9,7 @@ ExecReload=/bin/kill -HUP $MAINPID
 PIDFile=/run/clamav/clamd.pid
 Restart=on-failure
 PrivateTmp=true
+TimeoutStartSec=120
 
 [Install]
 WantedBy=multi-user.target
