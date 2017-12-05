@@ -55,7 +55,7 @@ Requires(postun):	 /bin/systemctl\
 Summary:	End-user tools for the Clam Antivirus scanner
 Name:		clamav
 Version:	0.99.2
-Release:	3%{?dist}
+Release:	4%{?dist}
 License:	%{?with_unrar:proprietary}%{!?with_unrar:GPLv2}
 Group:		Applications/File
 URL:		http://www.clamav.net
@@ -271,6 +271,7 @@ install -D -p -m 0644 %SOURCE1000        $RPM_BUILD_ROOT/lib/systemd/system/clam
 
 
 ## prepare the update-files
+install -D -m 0644 -p %SOURCE3	$RPM_BUILD_ROOT%_sysconfdir/logrotate.d/clamd
 install -D -m 0644 -p %SOURCE203	$RPM_BUILD_ROOT%_sysconfdir/logrotate.d/freshclam
 mkdir -p $RPM_BUILD_ROOT%_var/log/clamav
 touch $RPM_BUILD_ROOT%freshclamlog

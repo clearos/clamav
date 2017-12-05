@@ -1,9 +1,8 @@
-/var/log/clamd.<SERVICE> {
+/var/log/clamav/clamd.log {
 	monthly
 	notifempty
 	missingok
-
 	postrotate
-		killall -HUP clamd.<SERVICE> 2>/dev/null || :
+		killall -HUP clamd 2>/dev/null || :
 	endscript
 }
