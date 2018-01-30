@@ -1,47 +1,46 @@
-#global prerelease	rc1
-%global with_unrar	1
+#global prerelease  rc1
+%global with_unrar    1
 
 ## Fedora Extras specific customization below...
-%bcond_without		fedora
-%bcond_with		upstart
-%bcond_without		systemd
+%bcond_without  fedora
+%bcond_with        upstart
+%bcond_without        systemd
 %if 0%{?fedora} < 23
-%bcond_without		sysv
+%bcond_without        sysv
 %else
-%bcond_with		sysv
+%bcond_with        sysv
 %endif
-%bcond_without		tmpfiles
-%bcond_with		unrar
-%bcond_without		noarch
-%bcond_without		bytecode
+%bcond_without        tmpfiles
+%bcond_with        unrar
+%bcond_without        noarch
+%bcond_without        bytecode
 ##
 
-%global _hardened_build	1
+%global _hardened_build 1
 
 %ifnarch s390 s390x
-%global have_ocaml	1
+%global have_ocaml  1
 %else
-%global have_ocaml	0
+%global have_ocaml  0
 %endif
 
-%global username	clam
-%global homedir		%_var/lib/clamav
-%global freshclamlog	%_var/log/clamav/freshclam.log
-%global pkgdatadir	%_datadir/%name
+%global username    clam
+%global homedir        %_var/lib/clamav
+%global freshclamlog    %_var/log/clamav/freshclam.log
+%global pkgdatadir    %_datadir/%name
 
-%global scanuser	clam
+%global scanuser    clam
+%global scanstatedir    %_var/run/clamav
 
-%global scanstatedir	%_var/run/clamav
-
-%{?with_noarch:%global noarch	BuildArch:	noarch}
+%{?with_noarch:%global noarch   BuildArch:  noarch}
 %{!?_unitdir:%global _unitdir /lib/systemd/system}
 %{!?release_func:%global release_func() %%{?prerelease:0.}%1%%{?prerelease:.%%prerelease}%%{?dist}}
 %{!?apply:%global  apply(p:n:b:) %patch%%{-n:%%{-n*}} %%{-p:-p %%{-p*}} %%{-b:-b %%{-b*}} \
 %nil}
 %{!?systemd_reqs:%global systemd_reqs \
-Requires(post):		 /bin/systemctl\
-Requires(preun):	 /bin/systemctl\
-Requires(postun):	 /bin/systemctl\
+Requires(post):      /bin/systemctl\
+Requires(preun):     /bin/systemctl\
+Requires(postun):    /bin/systemctl\
 %nil}
 %{!?systemd_install:%global systemd_install()\
 %post %1\
@@ -52,98 +51,99 @@ Requires(postun):	 /bin/systemctl\
 %systemd_postun_with_restart %2 \
 %nil}
 
-Summary:	End-user tools for the Clam Antivirus scanner
-Name:		clamav
-Version:	0.99.2
-Release:	4%{?dist}
-License:	%{?with_unrar:proprietary}%{!?with_unrar:GPLv2}
-Group:		Applications/File
-URL:		http://www.clamav.net
+
+Summary:    End-user tools for the Clam Antivirus scanner
+Name:       clamav
+Version:    0.99.2
+Release:    4%{?dist}
+License:    %{?with_unrar:proprietary}%{!?with_unrar:GPLv2}
+Group:      Applications/File
+URL:        http://www.clamav.net
 %if 0%{?with_unrar:1}
-Source0:	http://download.sourceforge.net/sourceforge/clamav/%name-%version%{?prerelease}.tar.gz
-Source999:	http://download.sourceforge.net/sourceforge/clamav/%name-%version%{?prerelease}.tar.gz.sig
+Source0:    http://download.sourceforge.net/sourceforge/clamav/%name-%version%{?prerelease}.tar.gz
+Source999:  http://download.sourceforge.net/sourceforge/clamav/%name-%version%{?prerelease}.tar.gz.sig
 %else
 # Unfortunately, clamav includes support for RAR v3, derived from GPL
 # incompatible unrar from RARlabs. We have to pull this code out.
 # tarball was created by
 #  make clean-sources NAME=clamav VERSION=<version> TARBALL=clamav-<version>.tar.gz TARBALL_CLEAN=clamav-<version>-norar.tar.xz
-Source0:	%name-%version%{?prerelease}-norar.tar.xz
+Source0:    %name-%version%{?prerelease}-norar.tar.xz
 %endif
-Source10:	http://db.local.clamav.net/main.cvd
-Source11:	http://db.local.clamav.net/daily.cvd
-Source12:	http://db.local.clamav.net/bytecode.cvd
+Source10:    http://db.local.clamav.net/main.cvd
+Source11:    http://db.local.clamav.net/daily.cvd
+Source12:    http://db.local.clamav.net/bytecode.cvd
 
-Patch24:	clamav-0.99-private.patch
-Patch26:	clamav-0.98.5-cliopts.patch
-Patch27:	clamav-0.98-umask.patch
+Patch24:    clamav-0.99-private.patch
+Patch26:    clamav-0.98.5-cliopts.patch
+Patch27:    clamav-0.98-umask.patch
 # https://bugzilla.redhat.com/attachment.cgi?id=403775&action=diff&context=patch&collapsed=&headers=1&format=raw
-Patch29:	clamav-0.99.1-jitoff.patch
+Patch29:    clamav-0.99.1-jitoff.patch
 # https://llvm.org/viewvc/llvm-project/llvm/trunk/lib/ExecutionEngine/JIT/Intercept.cpp?r1=128086&r2=137567
-Patch30:	llvm-glibc.patch
-Patch31:	clamav-0.99.1-setsebool.patch
-BuildRoot:	%_tmppath/%name-%version-%release-root
-Requires:	clamav-lib = %version-%release
-Requires:	data(clamav)
+Patch30:    llvm-glibc.patch
+Patch31:    clamav-0.99.1-setsebool.patch
+BuildRoot:    %_tmppath/%name-%version-%release-root
+Requires:    clamav-lib = %version-%release
+Requires:    data(clamav)
 Provides:   clamav-update
 Obsoletes:   clamav-update
 BuildRequires:  pcre-devel
-BuildRequires:	zlib-devel bzip2-devel gmp-devel curl-devel
-BuildRequires:	ncurses-devel openssl-devel libxml2-devel
-BuildRequires:	%_includedir/tcpd.h
-%{?with_bytecode:BuildRequires:	bc tcl groff graphviz}
+BuildRequires:    zlib-devel bzip2-devel gmp-devel curl-devel
+BuildRequires:    ncurses-devel openssl-devel libxml2-devel
+BuildRequires:    %_includedir/tcpd.h
+%{?with_bytecode:BuildRequires:    bc tcl groff graphviz}
 %if %{have_ocaml}
-%{?with_bytecode:BuildRequires:	ocaml}
+%{?with_bytecode:BuildRequires:    ocaml}
 %endif
 
 %package filesystem
-Summary:	Filesystem structure for clamav
-Group:		Applications/File
-Provides:	user(%username)  = 4
-Provides:	group(%username) = 4
+Summary:    Filesystem structure for clamav
+Group:        Applications/File
+Provides:    user(%username)  = 4
+Provides:    group(%username) = 4
 # Prevent version mix
-Conflicts:	%name < %version-%release
-Conflicts:	%name > %version-%release
+Conflicts:    %name < %version-%release
+Conflicts:    %name > %version-%release
 Requires(pre):  shadow-utils
 %{?noarch}
 
 %package lib
-Summary:	Dynamic libraries for the Clam Antivirus scanner
-Group:		System Environment/Libraries
-Requires:	data(clamav)
+Summary:    Dynamic libraries for the Clam Antivirus scanner
+Group:        System Environment/Libraries
+Requires:    data(clamav)
 
 %package devel
-Summary:	Header files and libraries for the Clam Antivirus scanner
-Group:		Development/Libraries
-Requires:	clamav-lib        = %version-%release
-Requires:	clamav-filesystem = %version-%release
-Requires:	openssl-devel
+Summary:    Header files and libraries for the Clam Antivirus scanner
+Group:        Development/Libraries
+Requires:    clamav-lib        = %version-%release
+Requires:    clamav-filesystem = %version-%release
+Requires:    openssl-devel
 
 %package data
-Summary:	Virus signature data for the Clam Antivirus scanner
-Group:		Applications/File
-Requires(pre):		clamav-filesystem = %version-%release
-Requires(postun):	clamav-filesystem = %version-%release
-Provides:		data(clamav) = full
-Conflicts:		data(clamav) < full
-Conflicts:		data(clamav) > full
+Summary:    Virus signature data for the Clam Antivirus scanner
+Group:        Applications/File
+Requires(pre):        clamav-filesystem = %version-%release
+Requires(postun):    clamav-filesystem = %version-%release
+Provides:        data(clamav) = full
+Conflicts:        data(clamav) < full
+Conflicts:        data(clamav) > full
 %{?noarch}
 
 %package server
-Summary:	Clam Antivirus scanner server
-Group:		System Environment/Daemons
-Source3:	clamd.logrotate
-Source203:	clamav-update.logrotate
+Summary:    Clam Antivirus scanner server
+Group:        System Environment/Daemons
+Source3:    clamd.logrotate
+Source203:    clamav-update.logrotate
 Source1000: clamd.service
 Provides:   clamav-server-systemd
-Requires:	crontabs
-Requires:	data(clamav)
-Requires:	clamav-filesystem = %version-%release
-Requires:	clamav-lib        = %version-%release
-Requires:	nc coreutils
-Requires(pre):		/etc/cron.d
-Requires(postun):	/etc/cron.d
-Requires(post):		%__chown %__chmod
-Requires(post):		group(%username)
+Requires:    crontabs
+Requires:    data(clamav)
+Requires:    clamav-filesystem = %version-%release
+Requires:    clamav-lib        = %version-%release
+Requires:    nc coreutils
+Requires(pre):        /etc/cron.d
+Requires(postun):    /etc/cron.d
+Requires(post):        %__chown %__chmod
+Requires(post):        group(%username)
 
 %description
 Clam AntiVirus is an anti-virus toolkit for UNIX. The main purpose of this
@@ -216,28 +216,27 @@ export FRESHCLAM_LIBS='-lz'
 # IPv6 check is buggy and does not work when there are no IPv6 interface on build machine
 export have_cv_ipv6=yes
 %configure \
-	--disable-static \
-	--disable-rpath \
-	--disable-silent-rules \
-	--disable-clamav \
-	--with-user=%username \
-	--with-group=%username \
-	--with-libcurl=%{_prefix} \
-	--with-dbdir=/var/lib/clamav \
-	--disable-milter \
-	--enable-clamdtop \
-	%{!?with_bytecode:--disable-llvm} \
-	%{!?with_unrar:--disable-unrar}
+    --disable-static \
+    --disable-rpath \
+    --disable-silent-rules \
+    --disable-clamav \
+    --with-user=%username \
+    --with-group=%username \
+    --with-libcurl=%{_prefix} \
+    --with-dbdir=/var/lib/clamav \
+    --disable-milter \
+    --enable-clamdtop \
+    %{!?with_bytecode:--disable-llvm} \
+    %{!?with_unrar:--disable-unrar}
 
 # TODO: check periodically that CLAMAVUSER is used for freshclam only
 
 
 # build with --as-needed and disable rpath
 sed -i \
-	-e 's! -shared ! -Wl,--as-needed\0!g'					\
-	-e '/sys_lib_dlsearch_path_spec=\"\/lib \/usr\/lib /s!\"\/lib \/usr\/lib !/\"/%_lib /usr/%_lib !g'	\
-	libtool
-
+    -e 's! -shared ! -Wl,--as-needed\0!g'                    \
+    -e '/sys_lib_dlsearch_path_spec=\"\/lib \/usr\/lib /s!\"\/lib \/usr\/lib !/\"/%_lib /usr/%_lib !g'    \
+    libtool
 
 make %{?_smp_mflags}
 
@@ -249,30 +248,30 @@ rm -rf "$RPM_BUILD_ROOT" _doc*
 make DESTDIR="$RPM_BUILD_ROOT" install
 
 install -d -m 0755 \
-	$RPM_BUILD_ROOT%_sysconfdir/{mail,clamd.d,logrotate.d} \
-	$RPM_BUILD_ROOT%_tmpfilesdir \
-	$RPM_BUILD_ROOT%_var/{log,run} \
+    $RPM_BUILD_ROOT%_sysconfdir/{mail,clamd.d,logrotate.d} \
+    $RPM_BUILD_ROOT%_tmpfilesdir \
+    $RPM_BUILD_ROOT%_var/{log,run} \
     $RPM_BUILD_ROOT%pkgdatadir \
-	$RPM_BUILD_ROOT%homedir \
-	$RPM_BUILD_ROOT%scanstatedir \
-	$RPM_BUILD_ROOT/usr/lib/tmpfiles.d
+    $RPM_BUILD_ROOT%homedir \
+    $RPM_BUILD_ROOT%scanstatedir \
+    $RPM_BUILD_ROOT/usr/lib/tmpfiles.d
 
-rm -f	$RPM_BUILD_ROOT%_sysconfdir/clamd.conf.sample \
-	$RPM_BUILD_ROOT%_libdir/*.la
+rm -f    $RPM_BUILD_ROOT%_sysconfdir/clamd.conf.sample \
+    $RPM_BUILD_ROOT%_libdir/*.la
 
 
 #touch $RPM_BUILD_ROOT%homedir/daily.cld
 #touch $RPM_BUILD_ROOT%homedir/main.cld
 
-install -D -m 0644 -p %SOURCE10		$RPM_BUILD_ROOT%homedir/main.cvd
-install -D -m 0644 -p %SOURCE11		$RPM_BUILD_ROOT%homedir/daily.cvd
+install -D -m 0644 -p %SOURCE10        $RPM_BUILD_ROOT%homedir/main.cvd
+install -D -m 0644 -p %SOURCE11        $RPM_BUILD_ROOT%homedir/daily.cvd
 
 install -D -p -m 0644 %SOURCE1000        $RPM_BUILD_ROOT/lib/systemd/system/clamd.service
 
 
 ## prepare the update-files
-install -D -m 0644 -p %SOURCE3	$RPM_BUILD_ROOT%_sysconfdir/logrotate.d/clamd
-install -D -m 0644 -p %SOURCE203	$RPM_BUILD_ROOT%_sysconfdir/logrotate.d/freshclam
+install -D -m 0644 -p %SOURCE3    $RPM_BUILD_ROOT%_sysconfdir/logrotate.d/clamd
+install -D -m 0644 -p %SOURCE203    $RPM_BUILD_ROOT%_sysconfdir/logrotate.d/freshclam
 mkdir -p $RPM_BUILD_ROOT%_var/log/clamav
 touch $RPM_BUILD_ROOT%freshclamlog
 
@@ -323,10 +322,10 @@ exit 0
 %systemd_post clamd.service
 
 test -e %freshclamlog || {
-	touch %freshclamlog
-	%__chmod 0664 %freshclamlog
-	%__chown root:%username %freshclamlog
-	! test -x /sbin/restorecon || /sbin/restorecon %freshclamlog
+    touch %freshclamlog
+    %__chmod 0664 %freshclamlog
+    %__chown root:%username %freshclamlog
+    ! test -x /sbin/restorecon || /sbin/restorecon %freshclamlog
 }
 
 %postun server
