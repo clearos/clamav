@@ -1,20 +1,9 @@
 #global prerelease  rc1
 %global with_unrar    1
+%global with_bytecode    1
 
-## Fedora Extras specific customization below...
-%bcond_without  fedora
-%bcond_with        upstart
-%bcond_without        systemd
-%if 0%{?fedora} < 23
-%bcond_without        sysv
-%else
-%bcond_with        sysv
-%endif
-%bcond_without        tmpfiles
-%bcond_with        unrar
-%bcond_without        noarch
-%bcond_without        bytecode
-##
+%bcond_with     systemd
+%bcond_with     tmpfiles
 
 %global _hardened_build 1
 
@@ -54,8 +43,8 @@ Requires(postun):    /bin/systemctl\
 
 Summary:    End-user tools for the Clam Antivirus scanner
 Name:       clamav
-Version:    0.99.2
-Release:    4%{?dist}
+Version:    0.99.3
+Release:    1%{?dist}
 License:    %{?with_unrar:proprietary}%{!?with_unrar:GPLv2}
 Group:      Applications/File
 URL:        http://www.clamav.net
@@ -69,18 +58,20 @@ Source999:  http://download.sourceforge.net/sourceforge/clamav/%name-%version%{?
 #  make clean-sources NAME=clamav VERSION=<version> TARBALL=clamav-<version>.tar.gz TARBALL_CLEAN=clamav-<version>-norar.tar.xz
 Source0:    %name-%version%{?prerelease}-norar.tar.xz
 %endif
-Source10:    http://db.local.clamav.net/main.cvd
-Source11:    http://db.local.clamav.net/daily.cvd
-Source12:    http://db.local.clamav.net/bytecode.cvd
+# Sources:
+# - http://db.local.clamav.net/main.cvd
+# - http://db.local.clamav.net/daily.cvd
+# - http://db.local.clamav.net/bytecode.cvd
+Source10:    main-20180130.cvd
+Source11:    daily-20180130.cvd
+Source12:    bytecode-20180130.cvd
 
 Patch24:    clamav-0.99-private.patch
-Patch26:    clamav-0.98.5-cliopts.patch
 Patch27:    clamav-0.98-umask.patch
-# https://bugzilla.redhat.com/attachment.cgi?id=403775&action=diff&context=patch&collapsed=&headers=1&format=raw
-Patch29:    clamav-0.99.1-jitoff.patch
 # https://llvm.org/viewvc/llvm-project/llvm/trunk/lib/ExecutionEngine/JIT/Intercept.cpp?r1=128086&r2=137567
 Patch30:    llvm-glibc.patch
 Patch31:    clamav-0.99.1-setsebool.patch
+Patch33:    clamav-0.99.2-temp-cleanup.patch
 BuildRoot:    %_tmppath/%name-%version-%release-root
 Requires:    clamav-lib = %version-%release
 Requires:    data(clamav)
@@ -180,9 +171,7 @@ This package contains files which are needed to execute the clamd-daemon.
 %setup -q -n %{name}-%{version}%{?prerelease}
 
 %apply -n24 -p1 -b .private
-#% apply -n26 -p1 -b .cliopts
 %apply -n27 -p1 -b .umask
-%apply -n29 -p1 -b .jitoff
 %apply -n30 -p1
 %apply -n31 -p1 -b .setsebool
 %{?apply_end}
@@ -263,8 +252,9 @@ rm -f    $RPM_BUILD_ROOT%_sysconfdir/clamd.conf.sample \
 #touch $RPM_BUILD_ROOT%homedir/daily.cld
 #touch $RPM_BUILD_ROOT%homedir/main.cld
 
-install -D -m 0644 -p %SOURCE10        $RPM_BUILD_ROOT%homedir/main.cvd
-install -D -m 0644 -p %SOURCE11        $RPM_BUILD_ROOT%homedir/daily.cvd
+install -D -m 0644 -p %SOURCE10        $RPM_BUILD_ROOT%homedir/install/main.cvd
+install -D -m 0644 -p %SOURCE11        $RPM_BUILD_ROOT%homedir/install/daily.cvd
+%{?with_bytecode:install -D -m 0644 -p %SOURCE12        $RPM_BUILD_ROOT%homedir/install/bytecode.cvd}
 
 install -D -p -m 0644 %SOURCE1000        $RPM_BUILD_ROOT/lib/systemd/system/clamd.service
 
@@ -304,7 +294,10 @@ rm -rf "$RPM_BUILD_ROOT"
 ## ------------------------------------------------------------
 
 %post data
-[ -e %homedir/daily.cld ] && rm -f %homedir/daily.cld
+[ ! -e %homedir/daily.cld ] && cp %homedir/install/daily.cvd %homedir/daily.cvd
+[ ! -e %homedir/main.cld ] && cp %homedir/install/main.cvd %homedir/main.cvd
+[ ! -e %homedir/bytecode.cld ] && cp %homedir/install/bytecode.cvd %homedir/bytecode.cvd
+
 exit 0
 
 %pre filesystem
@@ -346,7 +339,6 @@ test -e %freshclamlog || {
 %config(noreplace) %verify(not mtime)    %_sysconfdir/freshclam.conf
 %config(noreplace) %verify(not mtime)    %_sysconfdir/logrotate.d/*
 %ghost %attr(0664,root,%username) %verify(not size md5 mtime) %freshclamlog
-#% ghost %attr(0664,%username,%username) %homedir/*.cld
 
 ## -----------------------
 
@@ -376,7 +368,7 @@ test -e %freshclamlog || {
 # use %%config to keep files which were updated by 'freshclam'
 # already. Without this tag, they would be overridden with older
 # versions whenever a new -data package is installed.
-%config %verify(not size md5 mtime) %homedir/*.cvd
+%config(noreplace) %homedir/install/*.cvd
 
 %files server
 %defattr(-,root,root,-)

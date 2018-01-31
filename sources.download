@@ -1,4 +1,4 @@
-167bd6a13e05ece326b968fdb539b05c2ffcfef6018a274a10aeda85c2c0027a clamav-0.99.2.tar.gz http://www.clamav.net/downloads/production/clamav-0.99.2.tar.gz
-307d8dcb3cb8d9d0fe71111310794435dfae8226fe90f0889aa03347fe6997ba bytecode.cvd http://mirrors.egloo.ca/egloo/clearos/7/build/bytecode.cvd
-a07f6ba61f449976302736459be928f8f430848ed6d05a279b8acacfba00a4cd daily.cvd http://mirrors.egloo.ca/egloo/clearos/7/build/daily.cvd
-4a8dfbc4c44704186ad29b5a3f8bdb6674b679cecdf83b156dd1c650129b56f2 main.cvd http://mirrors.egloo.ca/egloo/clearos/7/build/main.cvd
+00fa5292a6e00a3a4035b826267748965d5d2c4943d8ff417d740238263e8e84 clamav-0.99.3.tar.gz http://www.clamav.net/downloads/production/clamav-0.99.3.tar.gz
+4b7ed69c40ac10a9474f732a6505032b83a3a4fa7a0b68ae8483b783d1f66915 bytecode-20180130.cvd http://mirrors.egloo.ca/egloo/clearos/7/build/bytecode-20180130.cvd
+92707bb46eae9bf1f61252439074cae005c2c896f3f8ad8929b4c1ce48f96811 daily-20180130.cvd http://mirrors.egloo.ca/egloo/clearos/7/build/daily-20180130.cvd
+081884225087021e718599e8458ff6c9ee3cdebed8775dd8e445fc7b589d88a6 main-20180130.cvd http://mirrors.egloo.ca/egloo/clearos/7/build/main-20180130.cvd
