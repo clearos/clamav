@@ -65,6 +65,8 @@ Source0:    %name-%version%{?prerelease}-norar.tar.xz
 Source10:    main-20180130.cvd
 Source11:    daily-20180130.cvd
 Source12:    bytecode-20180130.cvd
+Source13:    freshclam.conf
+Source14:    clamd.conf
 
 Patch24:    clamav-0.99-private.patch
 Patch27:    clamav-0.98-umask.patch
@@ -256,6 +258,9 @@ install -D -m 0644 -p %SOURCE10        $RPM_BUILD_ROOT%homedir/install/main.cvd
 install -D -m 0644 -p %SOURCE11        $RPM_BUILD_ROOT%homedir/install/daily.cvd
 %{?with_bytecode:install -D -m 0644 -p %SOURCE12        $RPM_BUILD_ROOT%homedir/install/bytecode.cvd}
 
+install -D -m 0644 -p %SOURCE13        $RPM_BUILD_ROOT%_sysconfdir/freshclam.conf
+install -D -m 0644 -p %SOURCE14        $RPM_BUILD_ROOT%_sysconfdir/clamd.conf
+
 install -D -p -m 0644 %SOURCE1000        $RPM_BUILD_ROOT/lib/systemd/system/clamd.service
 
 
@@ -265,16 +270,11 @@ install -D -m 0644 -p %SOURCE203    $RPM_BUILD_ROOT%_sysconfdir/logrotate.d/fres
 mkdir -p $RPM_BUILD_ROOT%_var/log/clamav
 touch $RPM_BUILD_ROOT%freshclamlog
 
-mv -f $RPM_BUILD_ROOT%_sysconfdir/freshclam.conf{.sample,}
-
-### The scanner stuff
-sed -e 's!<SERVICE>!scan!g;s!<USER>!%scanuser!g' \
-    etc/clamd.conf.sample > $RPM_BUILD_ROOT%_sysconfdir/clamd.conf
-
 cat << EOF > $RPM_BUILD_ROOT/usr/lib/tmpfiles.d/clamd.conf
 d %scanstatedir 0775 %scanuser %scanuser
 EOF
 
+rm -f $RPM_BUILD_ROOT%{_sysconfdir}/freshclam.conf.sample
 rm -f $RPM_BUILD_ROOT%{_mandir}/man8/clamav-milter.*
 rm -fv $RPM_BUILD_ROOT/usr/lib/systemd/system/clamav-daemon.service
 rm -fv $RPM_BUILD_ROOT/usr/lib/systemd/system/clamav-daemon.socket
@@ -293,10 +293,22 @@ rm -rf "$RPM_BUILD_ROOT"
 
 ## ------------------------------------------------------------
 
+%preun data
+if [ $1 -eq 0 ]; then
+    [ -e %homedir/daily.cld ] && rm %homedir/daily.cld
+    [ -e %homedir/main.cld ] && rm %homedir/main.cld
+    [ -e %homedir/bytecode.cld ] && rm %homedir/bytecode.cld
+    [ -e %homedir/daily.cvd ] && rm %homedir/daily.cvd
+    [ -e %homedir/main.cvd ] && rm %homedir/main.cvd
+    [ -e %homedir/bytecode.cvd ] && rm %homedir/bytecode.cvd
+fi
+
+exit 0
+
 %post data
-[ ! -e %homedir/daily.cld ] && cp %homedir/install/daily.cvd %homedir/daily.cvd
-[ ! -e %homedir/main.cld ] && cp %homedir/install/main.cvd %homedir/main.cvd
-[ ! -e %homedir/bytecode.cld ] && cp %homedir/install/bytecode.cvd %homedir/bytecode.cvd
+[ ! -e %homedir/daily.cvd ] && cp %homedir/install/daily.cvd %homedir/daily.cvd
+[ ! -e %homedir/main.cvd ] && cp %homedir/install/main.cvd %homedir/main.cvd
+[ ! -e %homedir/bytecode.cvd ] && cp %homedir/install/bytecode.cvd %homedir/bytecode.cvd
 
 exit 0
 
