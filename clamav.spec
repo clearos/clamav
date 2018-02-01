@@ -377,10 +377,7 @@ test -e %freshclamlog || {
 
 %files data
 %defattr(-,%username,%username,-)
-# use %%config to keep files which were updated by 'freshclam'
-# already. Without this tag, they would be overridden with older
-# versions whenever a new -data package is installed.
-%config(noreplace) %homedir/install/*.cvd
+%homedir/install/*.cvd
 
 %files server
 %defattr(-,root,root,-)
