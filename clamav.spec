@@ -40,7 +40,6 @@ Requires(postun):    /bin/systemctl\
 %systemd_postun_with_restart %2 \
 %nil}
 
-
 Summary:    End-user tools for the Clam Antivirus scanner
 Name:       clamav
 Version:    0.99.3
